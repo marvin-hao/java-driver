@@ -15,7 +15,9 @@
  */
 package com.datastax.oss.driver.internal.mapper.processor.util;
 
+import com.datastax.oss.driver.api.core.data.GettableByName;
 import com.datastax.oss.driver.api.core.data.SettableByName;
+import com.datastax.oss.driver.internal.mapper.processor.ProcessorContext;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
@@ -35,6 +37,7 @@ public class Classes {
   private final Elements elementUtils;
 
   private final TypeMirror settableByNameType;
+  private final TypeMirror gettableByNameType;
 
   public Classes(Types typeUtils, Elements elementUtils) {
     this.typeUtils = typeUtils;
@@ -42,6 +45,8 @@ public class Classes {
 
     this.settableByNameType =
         typeUtils.erasure(elementUtils.getTypeElement(SettableByName.class.getName()).asType());
+    this.gettableByNameType =
+        typeUtils.erasure(elementUtils.getTypeElement(GettableByName.class.getName()).asType());
   }
 
   /** Whether an element is the {@link TypeElement} for the given class. */
@@ -61,5 +66,9 @@ public class Classes {
 
   public boolean implementsSettableByName(TypeMirror mirror) {
     return typeUtils.isAssignable(mirror, settableByNameType);
+  }
+
+  public boolean implementsGettableByName(TypeMirror mirror) {
+    return typeUtils.isAssignable(mirror, gettableByNameType);
   }
 }
