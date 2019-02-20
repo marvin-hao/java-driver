@@ -17,7 +17,6 @@ package com.datastax.oss.driver.internal.mapper.processor.util;
 
 import com.datastax.oss.driver.api.core.data.GettableByName;
 import com.datastax.oss.driver.api.core.data.SettableByName;
-import com.datastax.oss.driver.internal.mapper.processor.ProcessorContext;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;

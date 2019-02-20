@@ -20,7 +20,7 @@ import com.datastax.oss.driver.api.core.PagingIterable;
 import com.datastax.oss.driver.api.core.cql.AsyncResultSet;
 import com.datastax.oss.driver.api.core.cql.ResultSet;
 import com.datastax.oss.driver.api.mapper.annotations.Entity;
-import com.datastax.oss.driver.api.mapper.annotations.SetEntity;
+import com.datastax.oss.driver.api.mapper.annotations.GetEntity;
 import com.datastax.oss.driver.internal.mapper.processor.MethodGenerator;
 import com.datastax.oss.driver.internal.mapper.processor.ProcessorContext;
 import com.datastax.oss.driver.internal.mapper.processor.SkipGenerationException;
@@ -51,29 +51,36 @@ public class DaoGetEntityMethodGenerator implements MethodGenerator {
       ProcessorContext context) {
     this.methodElement = methodElement;
     this.daoImplementationGenerator = daoImplementationGenerator;
+    // Methods should only have one parameter
     if (methodElement.getParameters().size() != 1) {
       context
           .getMessager()
           .error(
-              methodElement, "%s method must have one parameter", SetEntity.class.getSimpleName());
+              methodElement, "%s method must have one parameter", GetEntity.class.getSimpleName());
       throw new SkipGenerationException();
     }
-    String tmpTarget = null;
-    TypeElement tmpEntityElement = null;
+    // Parameter name as a string
+    String tmpParameterString = null;
+    // The return type as an element
+    TypeElement returnTypeElement = null;
     VariableElement parameterElement = methodElement.getParameters().get(0);
     TypeMirror parameterType = parameterElement.asType();
+    // Check the parameter type make sure it matches an expected type
     if (context.getClassUtils().implementsGettableByName(parameterType)
         || context.getClassUtils().isSame(parameterType, ResultSet.class)
         || context.getClassUtils().isSame(parameterType, AsyncResultSet.class)) {
-      tmpTarget = parameterElement.getSimpleName().toString();
+      tmpParameterString = parameterElement.getSimpleName().toString();
     }
+    // Check return type. Make sure it matches the expected type
     TypeMirror returnType = methodElement.getReturnType();
     if (returnType.getKind() == TypeKind.DECLARED) {
       Element element = ((DeclaredType) returnType).asElement();
+      // Simple case return type is an entity type
       if (element.getKind() == ElementKind.CLASS) {
         if (element.getAnnotation(Entity.class) != null) {
-          tmpEntityElement = ((TypeElement) ((DeclaredType) returnType).asElement());
+          returnTypeElement = ((TypeElement) ((DeclaredType) returnType).asElement());
         }
+        // Return type is a an iterable type, check nested generic as well
       } else if (element.getKind() == ElementKind.INTERFACE) {
         List<? extends TypeMirror> generics = ((DeclaredType) returnType).getTypeArguments();
         if (generics.size() == 1) {
@@ -85,14 +92,14 @@ public class DaoGetEntityMethodGenerator implements MethodGenerator {
                     .getSimpleName()
                     .toString()
                     .equals(AsyncPagingIterable.class.getSimpleName())) {
-              tmpEntityElement = ((TypeElement) ((DeclaredType) generic).asElement());
+              returnTypeElement = ((TypeElement) ((DeclaredType) generic).asElement());
               pagingReturnType = true;
             }
           }
         }
       }
     }
-    if (tmpEntityElement == null) {
+    if (returnTypeElement == null) {
       context
           .getMessager()
           .error(
@@ -100,7 +107,7 @@ public class DaoGetEntityMethodGenerator implements MethodGenerator {
               "Invalid return type specified. Expected annotated entity, PagingIterable, or AsyncPagingIterable ");
       throw new SkipGenerationException();
     }
-    if (tmpTarget == null) {
+    if (tmpParameterString == null) {
       context
           .getMessager()
           .error(
@@ -108,8 +115,8 @@ public class DaoGetEntityMethodGenerator implements MethodGenerator {
               "Could not match parameter, expected a GettableByName, ResultSet or AsyncResultSet");
       throw new SkipGenerationException();
     }
-    this.entityElement = tmpEntityElement;
-    this.targetParameterName = tmpTarget;
+    this.entityElement = returnTypeElement;
+    this.targetParameterName = tmpParameterString;
   }
 
   @Override
