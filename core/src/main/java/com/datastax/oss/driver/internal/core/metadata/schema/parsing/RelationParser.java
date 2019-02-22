@@ -138,5 +138,7 @@ public abstract class RelationParser {
           .put("min_index_interval", TypeCodecs.INT)
           .put("read_repair_chance", TypeCodecs.DOUBLE)
           .put("speculative_retry", TypeCodecs.TEXT)
+          .put("read_repair", TypeCodecs.TEXT)
+          .put("additional_write_policy", TypeCodecs.TEXT)
           .build();
 }
