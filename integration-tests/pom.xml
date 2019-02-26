@@ -243,6 +243,12 @@
           <skip>true</skip>
         </configuration>
       </plugin>
+      <plugin>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <annotationProcessors>com.datastax.oss.driver.internal.mapper.processor.MapperProcessor</annotationProcessors>
+        </configuration>
+      </plugin>
     </plugins>
   </build>
 </project>
