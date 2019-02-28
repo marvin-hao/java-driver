@@ -15,4 +15,118 @@
  */
 package com.datastax.oss.driver.mapper;
 
-public class GetEntityIt {}
+import static org.assertj.core.api.Assertions.assertThat;
+
+import com.datastax.oss.driver.api.core.AsyncPagingIterable;
+import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.PagingIterable;
+import com.datastax.oss.driver.api.core.cql.AsyncResultSet;
+import com.datastax.oss.driver.api.core.cql.BoundStatement;
+import com.datastax.oss.driver.api.core.cql.PreparedStatement;
+import com.datastax.oss.driver.api.core.cql.ResultSet;
+import com.datastax.oss.driver.api.core.cql.Row;
+import com.datastax.oss.driver.api.core.cql.SimpleStatement;
+import com.datastax.oss.driver.api.testinfra.ccm.CcmRule;
+import com.datastax.oss.driver.api.testinfra.session.SessionRule;
+import com.datastax.oss.driver.categories.ParallelizableTests;
+import com.datastax.oss.driver.internal.core.util.concurrent.CompletableFutures;
+import com.datastax.oss.driver.mapper.model.EntityFixture;
+import com.datastax.oss.driver.mapper.model.inventory.InventoryFixtures;
+import com.datastax.oss.driver.mapper.model.inventory.InventoryMapper;
+import com.datastax.oss.driver.mapper.model.inventory.InventoryMapperBuilder;
+import com.datastax.oss.driver.mapper.model.inventory.Product;
+import com.datastax.oss.driver.mapper.model.inventory.ProductDao;
+import java.util.Iterator;
+import java.util.List;
+import java.util.concurrent.CompletionStage;
+import org.junit.BeforeClass;
+import org.junit.ClassRule;
+import org.junit.Test;
+import org.junit.experimental.categories.Category;
+import org.junit.rules.RuleChain;
+import org.junit.rules.TestRule;
+
+@Category(ParallelizableTests.class)
+public class GetEntityIt {
+
+  private static CcmRule ccm = CcmRule.getInstance();
+
+  private static SessionRule<CqlSession> sessionRule = SessionRule.builder(ccm).build();
+
+  @ClassRule public static TestRule chain = RuleChain.outerRule(ccm).around(sessionRule);
+
+  private static ProductDao productDao;
+
+  @BeforeClass
+  public static void setup() {
+    CqlSession session = sessionRule.session();
+
+    for (String query : InventoryFixtures.createStatements()) {
+      session.execute(
+          SimpleStatement.builder(query).withExecutionProfile(sessionRule.slowProfile()).build());
+    }
+
+    InventoryMapper inventoryMapper = new InventoryMapperBuilder(session).build();
+    productDao = inventoryMapper.productDao(sessionRule.keyspace());
+    PreparedStatement preparedStatement =
+        session.prepare("INSERT INTO product (id, description, dimensions) VALUES (?, ?, ?)");
+    BoundStatement boundStatement = preparedStatement.bind();
+    session.execute(productDao.set(InventoryFixtures.FLAMETHROWER.entity, boundStatement));
+    session.execute(productDao.set(InventoryFixtures.MP3_DOWNLOAD.entity, boundStatement));
+  }
+
+  @Test
+  public void should_get_entity_with_row() {
+    should_get_entity_with_row(InventoryFixtures.FLAMETHROWER);
+    should_get_entity_with_row(InventoryFixtures.MP3_DOWNLOAD);
+  }
+
+  private void should_get_entity_with_row(EntityFixture<Product> entityFixture) {
+    CqlSession session = sessionRule.session();
+    ResultSet rs =
+        session.execute(
+            "Select * FROM product WHERE id=" + entityFixture.entity.getId().toString());
+    List<Row> rows = rs.all();
+    assertThat(rows.size()).isEqualTo(1);
+    Product product = productDao.get(rows.get(0));
+    assertThat(product).isEqualTo(entityFixture.entity);
+  }
+
+  @Test
+  public void should_get_entity_with_result_set() {
+    should_get_entity_with_result_set(InventoryFixtures.FLAMETHROWER);
+    should_get_entity_with_result_set(InventoryFixtures.MP3_DOWNLOAD);
+  }
+
+  private void should_get_entity_with_result_set(EntityFixture<Product> entityFixture) {
+    CqlSession session = sessionRule.session();
+    ResultSet rs =
+        session.execute(
+            "Select * FROM product WHERE id=" + entityFixture.entity.getId().toString());
+    PagingIterable<Product> products = productDao.get(rs);
+    List<Product> productList = products.all();
+    assertThat(products.isFullyFetched()).isTrue();
+    assertThat(productList.size()).isEqualTo(1);
+    assertThat(productList.get(0)).isEqualTo(entityFixture.entity);
+  }
+
+  @Test
+  public void should_get_entity_with_async_result_set() {
+    should_get_entity_with_async_result_set(InventoryFixtures.FLAMETHROWER);
+    should_get_entity_with_async_result_set(InventoryFixtures.MP3_DOWNLOAD);
+  }
+
+  private void should_get_entity_with_async_result_set(EntityFixture<Product> entityFixture) {
+    CqlSession session = sessionRule.session();
+    CompletionStage<? extends AsyncResultSet> future =
+        session.executeAsync(
+            "Select * FROM product WHERE id=" + entityFixture.entity.getId().toString());
+    AsyncResultSet rs = CompletableFutures.getUninterruptibly(future);
+    AsyncPagingIterable<Product> products = productDao.get(rs);
+    Iterator<Product> productIterator = products.currentPage().iterator();
+    assertThat(products.hasMorePages()).isFalse();
+    assertThat(productIterator.hasNext()).isEqualTo(true);
+    assertThat(productIterator.next()).isEqualTo(entityFixture.entity);
+    assertThat(productIterator.hasNext()).isEqualTo(false);
+  }
+}
