@@ -44,7 +44,7 @@ Now each request only needs a profile name:
 ```java
 SimpleStatement s =
   SimpleStatement.builder("SELECT name FROM user WHERE id = 1")
-      .withExecutionProfileName("oltp")
+      .setExecutionProfileName("oltp")
       .build();
 session.execute(s);
 ```
