@@ -132,7 +132,7 @@ public abstract class StatementBuilder<
 
   /** @see Statement#setCustomPayload(Map) */
   @NonNull
-  public SelfT setCustomPayload(@NonNull String key, @Nullable ByteBuffer value) {
+  public SelfT addCustomPayload(@NonNull String key, @Nullable ByteBuffer value) {
     if (customPayloadBuilder == null) {
       customPayloadBuilder = NullAllowingImmutableMap.builder();
     }

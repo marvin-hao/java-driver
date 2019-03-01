@@ -451,7 +451,7 @@ public class BoundStatementIT {
 
     if (atLeastV4) {
       simpleStatementBuilder =
-          simpleStatementBuilder.setCustomPayload("key1", mockCustomPayload.get("key1"));
+          simpleStatementBuilder.addCustomPayload("key1", mockCustomPayload.get("key1"));
     }
 
     PreparedStatement preparedStatement = session.prepare(simpleStatementBuilder.build());

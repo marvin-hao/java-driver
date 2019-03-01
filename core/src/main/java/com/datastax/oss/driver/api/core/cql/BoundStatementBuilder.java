@@ -69,7 +69,7 @@ public class BoundStatementBuilder extends StatementBuilder<BoundStatementBuilde
     this.routingKey = routingKey;
     this.routingToken = routingToken;
     for (Map.Entry<String, ByteBuffer> entry : customPayload.entrySet()) {
-      this.setCustomPayload(entry.getKey(), entry.getValue());
+      this.addCustomPayload(entry.getKey(), entry.getValue());
     }
     this.idempotent = idempotent;
     this.tracing = tracing;
